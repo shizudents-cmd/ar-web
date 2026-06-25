@@ -53,10 +53,13 @@
     background:linear-gradient(0deg,rgba(8,10,18,.92),transparent)}
   #arbar .btn{margin-top:0}
   #status{position:fixed;top:0;left:0;right:0;z-index:20;text-align:center;font-size:13px;
-    padding:10px;color:#fff;background:rgba(8,10,18,.55)}
+    padding:10px;color:#fff;background:rgba(8,10,18,.55);pointer-events:none}
   .scan-frame{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:62vw;height:62vw;
     max-width:330px;max-height:330px;border:2px dashed rgba(255,255,255,.6);border-radius:18px;z-index:6;
-    display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:13px;text-align:center;padding:12px}
+    display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:13px;text-align:center;padding:12px;
+    pointer-events:none}
+  #arUI{pointer-events:none}
+  #arbar,#webpanel{pointer-events:auto}
   .hidden{display:none!important}
 </style>
 </head>
