@@ -67,6 +67,8 @@
     width:78vw;max-width:460px;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
     box-shadow:0 18px 50px rgba(0,0,0,.55);border:2px solid rgba(150,180,255,.5);display:none;background:#000}
   #videoWrap iframe,#videoWrap video{width:100%;height:100%;border:0;display:block;object-fit:cover}
+  #videoWrap.portrait{aspect-ratio:9/16;width:60vw;max-width:300px;bottom:9%}
+  #videoWrap.portrait iframe{background:#fff}
   #showBar{position:absolute;left:0;right:0;bottom:0;z-index:60;display:flex;gap:10px;padding:14px;
     background:linear-gradient(0deg,rgba(8,10,18,.85),transparent);pointer-events:none}
   #showBar .btn{margin-top:0;pointer-events:auto}
@@ -95,7 +97,7 @@
     <label for="msgs">メッセージ（1行＝1つのテロップ・上から順に流れます）</label>
     <textarea id="msgs" placeholder="おめでとう！&#10;いつもありがとう&#10;これからもよろしくね"></textarea>
 
-    <label for="video">動画リンク（YouTube / Vimeo / mp4 のURL・空欄でもOK）</label>
+    <label for="video">動画リンク（YouTube / Instagram / TikTok / Vimeo / mp4・空欄でもOK）</label>
     <input id="video" type="url" inputmode="url" placeholder="https://youtu.be/..." autocomplete="off">
 
     <div class="opts">
@@ -191,8 +193,13 @@
   /* ---------- 動画URL判定 ---------- */
   function videoEmbed(url){
     if(!url) return null;
-    var yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{6,})/);
+    var yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([\w-]{6,})/);
     if(yt) return {type:"iframe",src:"https://www.youtube.com/embed/"+yt[1]+"?playsinline=1&rel=0&autoplay=1&modestbranding=1"};
+    var ig=url.match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/);
+    if(ig){ var kind=(ig[1]==="reels")?"reel":ig[1];
+      return {type:"iframe",src:"https://www.instagram.com/"+kind+"/"+ig[2]+"/embed/",portrait:true}; }
+    var tk=url.match(/tiktok\.com\/.*\/video\/(\d+)/);
+    if(tk) return {type:"iframe",src:"https://www.tiktok.com/embed/v2/"+tk[1],portrait:true};
     var vm=url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
     if(vm) return {type:"iframe",src:"https://player.vimeo.com/video/"+vm[1]+"?autoplay=1&playsinline=1"};
     if(/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url)) return {type:"video",src:url};
@@ -269,10 +276,12 @@
     var emb=videoEmbed(cfg.v);
     videoWrap.innerHTML="";
     if(emb){
+      videoWrap.classList.toggle("portrait", !!emb.portrait);
       if(emb.type==="iframe"){
         var f=document.createElement("iframe");
         f.setAttribute("allow","autoplay;encrypted-media;picture-in-picture;fullscreen");
         f.setAttribute("allowfullscreen","");
+        f.setAttribute("scrolling","no");
         f.src=emb.src; videoWrap.appendChild(f);
       }else{
         var v=document.createElement("video");
