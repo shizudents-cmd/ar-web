@@ -97,7 +97,12 @@
     <label for="msgs">メッセージ（1行＝1つのテロップ・上から順に流れます）</label>
     <textarea id="msgs" placeholder="おめでとう！&#10;いつもありがとう&#10;これからもよろしくね"></textarea>
 
-    <label for="video">動画リンク（YouTube / Instagram / TikTok / Vimeo / mp4・空欄でもOK）</label>
+    <label>端末の動画を使う（いちばん簡単・この端末で再生）</label>
+    <label for="localVid" class="btn secondary" style="margin-top:0">📁 スマホ内の動画を選ぶ</label>
+    <input id="localVid" type="file" accept="video/*" style="display:none">
+    <div id="localName" style="font-size:12px;color:var(--ok);margin-top:8px"></div>
+
+    <label for="video">またはリンクで指定（YouTube / Instagram / TikTok / Vimeo / mp4）</label>
     <input id="video" type="url" inputmode="url" placeholder="https://youtu.be/..." autocomplete="off">
 
     <div class="opts">
@@ -161,11 +166,26 @@
   function baseUrl(){ return location.origin+location.pathname; }
 
   /* ---------- 入力 → 設定オブジェクト ---------- */
+  var localVideoURL=null, localVideoName="";
+  $("#localVid").addEventListener("change",function(e){
+    var f=e.target.files && e.target.files[0];
+    if(!f) return;
+    if(localVideoURL) URL.revokeObjectURL(localVideoURL);
+    localVideoURL=URL.createObjectURL(f); localVideoName=f.name;
+    $("#localName").textContent="選択中： "+f.name+"（この端末で再生されます）";
+    $("#video").value="";
+  });
+  $("#video").addEventListener("input",function(){
+    if($("#video").value.trim()){ localVideoURL=null; localVideoName=""; $("#localName").textContent=""; $("#localVid").value=""; }
+  });
+
   function readConfig(){
     var msgs=$("#msgs").value.split("\n").map(function(s){return s.trim();}).filter(Boolean);
+    var v=($("#video").value||"").trim();
+    if(!v && localVideoURL) v=localVideoURL;
     return {
       m:msgs,
-      v:($("#video").value||"").trim(),
+      v:v,
       loop:$("#loop").checked?1:0,
       dur:$("#speed").value
     };
@@ -193,6 +213,7 @@
   /* ---------- 動画URL判定 ---------- */
   function videoEmbed(url){
     if(!url) return null;
+    if(/^blob:|^data:/.test(url)) return {type:"video",src:url,portrait:true};
     var yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([\w-]{6,})/);
     if(yt) return {type:"iframe",src:"https://www.youtube.com/embed/"+yt[1]+"?playsinline=1&rel=0&autoplay=1&modestbranding=1"};
     var ig=url.match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/);
@@ -211,6 +232,10 @@
   function makeQR(){
     var c=readConfig();
     if(!c.m.length && !c.v){ $("#msgs").focus(); return; }
+    if(/^blob:|^data:/.test(c.v)){
+      alert("「スマホ内の動画」はこの端末だけで再生できる動画のため、QRや共有リンクには含められません。\n他の人にもQRで配るには、動画リンク（YouTube等）を使うか、動画ファイルをネットに置いてください。\n\nメッセージだけのQRを作成します。");
+      c.v="";
+    }
     var link=baseUrl()+configToHash(c);
     $("#qr").innerHTML="";
     new QRCode($("#qr"),{text:link,width:240,height:240,correctLevel:QRCode.CorrectLevel.L});
