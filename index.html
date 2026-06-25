@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>AR Web Viewer — QRでサイトをARに浮かべる</title>
+<title>QR-AR Web Viewer — QRを目印にサイトを浮かべる</title>
 <style>
   :root{
     --bg:#0e1220; --card:#171c2e; --ink:#eef1f8; --sub:#9aa3bd;
@@ -14,14 +14,17 @@
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
     background:radial-gradient(1200px 800px at 70% -10%,#1c2440 0%,transparent 60%),var(--bg);
-    color:var(--ink);
+    color:var(--ink);overflow-x:hidden;
   }
   .wrap{max-width:520px;margin:0 auto;padding:22px 18px 60px}
-  header.brand{display:flex;align-items:center;gap:10px;margin:6px 0 18px}
+  header.brand{display:flex;align-items:center;gap:10px;margin:6px 0 16px}
   .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));
     display:grid;place-items:center;font-size:20px}
-  h1{font-size:19px;margin:0;letter-spacing:.2px}
+  h1{font-size:18px;margin:0;letter-spacing:.2px}
   .sub{color:var(--sub);font-size:12.5px;margin-top:2px}
+  .tabs{display:flex;gap:8px;background:#101424;border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:16px}
+  .tab{flex:1;text-align:center;padding:11px;border-radius:9px;font-size:14px;font-weight:600;color:var(--sub);cursor:pointer}
+  .tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
   label{display:block;font-size:13px;color:var(--sub);margin-bottom:7px}
   input[type=url]{width:100%;padding:13px 14px;border-radius:11px;border:1px solid var(--line);
@@ -32,275 +35,317 @@
     background:linear-gradient(135deg,var(--accent),var(--accent2))}
   .btn.secondary{background:#222a42;border:1px solid var(--line)}
   .btn:active{transform:translateY(1px)}
+  .row{display:flex;gap:10px}
+  .row .btn{margin-top:0}
   #qrbox{display:none;text-align:center;margin-top:18px}
-  #qr{display:inline-block;background:#fff;padding:14px;border-radius:14px}
+  #qr{display:inline-block;background:#fff;padding:16px;border-radius:14px}
   #qr img,#qr canvas{display:block}
+  #qrUrl{font-size:12px;color:var(--sub);margin-top:10px;word-break:break-all}
   .hint{font-size:12.5px;color:var(--sub);line-height:1.7;margin-top:14px}
-  .steps{counter-reset:s;list-style:none;padding:0;margin:8px 0 0}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:6px 0 0}
   .steps li{counter-increment:s;position:relative;padding:8px 0 8px 34px;font-size:13.5px;color:#c7cde0;border-top:1px dashed var(--line)}
   .steps li:first-child{border-top:0}
   .steps li::before{content:counter(s);position:absolute;left:0;top:7px;width:22px;height:22px;border-radius:50%;
     background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
   .pill{display:inline-block;font-size:11px;color:var(--ok);border:1px solid #244b3c;background:#10241c;
     padding:3px 9px;border-radius:999px;margin-bottom:10px}
-  a.inline{color:var(--accent);text-decoration:none}
-  .marker-note{font-size:12px;color:var(--sub);margin-top:10px;text-align:center}
-  /* AR overlay UI */
-  #arUI{position:fixed;inset:0;display:none;z-index:9}
-  #webpanel{position:fixed;display:none;border:0;background:#fff;border-radius:6px;
-    box-shadow:0 10px 40px rgba(0,0,0,.5);z-index:5;overflow:hidden}
-  #arbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:10px;padding:14px;
-    background:linear-gradient(0deg,rgba(8,10,18,.92),transparent)}
-  #arbar .btn{margin-top:0}
-  #status{position:fixed;top:0;left:0;right:0;z-index:20;text-align:center;font-size:13px;
-    padding:10px;color:#fff;background:rgba(8,10,18,.55);pointer-events:none}
-  .scan-frame{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:62vw;height:62vw;
-    max-width:330px;max-height:330px;border:2px dashed rgba(255,255,255,.6);border-radius:18px;z-index:6;
-    display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:13px;text-align:center;padding:12px;
-    pointer-events:none}
-  #arUI{pointer-events:none}
-  #arbar,#webpanel{pointer-events:auto}
   .hidden{display:none!important}
+
+  /* ===== スキャナ / AR ビュー ===== */
+  #scanView{position:fixed;inset:0;z-index:50;background:#000;display:none}
+  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+  #panel{position:absolute;left:0;top:0;width:320px;height:320px;border:0;background:#fff;
+    transform-origin:0 0;will-change:transform;box-shadow:0 8px 30px rgba(0,0,0,.45);display:none}
+  #reticle{position:absolute;left:0;top:0;width:320px;height:320px;transform-origin:0 0;
+    border:3px solid #3ddc97;border-radius:6px;display:none;pointer-events:none}
+  #scanTop{position:absolute;top:0;left:0;right:0;z-index:60;text-align:center;font-size:13px;
+    padding:12px;color:#fff;background:rgba(8,10,18,.55);pointer-events:none;word-break:break-all}
+  #scanBar{position:absolute;left:0;right:0;bottom:0;z-index:60;display:flex;gap:10px;padding:14px;
+    background:linear-gradient(0deg,rgba(8,10,18,.92),transparent)}
+  #scanBar .btn{margin-top:0}
+  #startOverlay{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:30px;gap:6px;background:#0e1220}
+  #startOverlay .em{font-size:42px}
+  #startOverlay h2{margin:6px 0 0;font-size:18px}
+  #startOverlay p{color:var(--sub);font-size:13.5px;line-height:1.7;margin:4px 0 0}
+  .finder{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60vw;height:60vw;
+    max-width:300px;max-height:300px;border:2px dashed rgba(255,255,255,.55);border-radius:18px;z-index:55;pointer-events:none}
 </style>
 </head>
 <body>
 
-<!-- ===================== ジェネレーター画面 ===================== -->
+<!-- ===================== メイン（QR作成 / 起動） ===================== -->
 <div class="wrap" id="home">
   <header class="brand">
     <div class="logo">🔮</div>
     <div>
-      <h1>AR Web Viewer</h1>
-      <div class="sub">QRを読み取ると、Webサイトが目の前に浮かび上がる</div>
+      <h1>QR-AR Web Viewer</h1>
+      <div class="sub">QRを目印に、その上へWebサイトを浮かべる</div>
     </div>
   </header>
 
-  <div class="card">
-    <span class="pill">● インストール不要・ブラウザだけで動作</span>
-    <label for="url">ARに表示したいWebサイトのURL</label>
-    <input id="url" type="url" inputmode="url" placeholder="https://example.com" autocomplete="off">
-    <button class="btn" id="makeBtn">QRコードを作成</button>
-    <button class="btn secondary" id="openArBtn">この端末でARを開始</button>
-
-    <div id="qrbox">
-      <div id="qr"></div>
-      <div class="marker-note">このQRをスマホのカメラで読み取ると<br>ARビューアが起動します</div>
-    </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="make">① QRを作る</div>
+    <div class="tab" data-tab="scan">② カメラでAR表示</div>
   </div>
 
-  <div class="card">
-    <label style="margin-bottom:10px">使い方</label>
-    <ol class="steps">
-      <li>表示したいサイトのURLを入力して「QRコードを作成」</li>
-      <li><b>ARマーカー</b>を印刷（または別画面に表示）して机や壁に置く<br>
-          <a class="inline" id="markerLink" href="#" >▶ Hiroマーカーを開く（印刷用）</a></li>
-      <li>QRをスマホで読み取りARを起動 → マーカーにカメラを向ける</li>
-      <li>マーカーの上にWebサイトが浮かび、タップで操作できます</li>
-    </ol>
-    <div class="hint">
-      ※ 公開URL（https）に置いて使うとスマホQR読み取り→AR起動がスムーズです。<br>
-      ※ 一部サイト（Google等）は埋め込みがブロックされるため、その場合は「全画面で開く」ボタンが出ます。
+  <!-- QR作成 -->
+  <section id="tab-make">
+    <div class="card">
+      <span class="pill">● URLを埋め込んだQRを生成</span>
+      <label for="url">ARに表示したいWebサイトのURL</label>
+      <input id="url" type="url" inputmode="url" placeholder="https://example.com" autocomplete="off">
+      <button class="btn" id="makeBtn">QRコードを作成</button>
+
+      <div id="qrbox">
+        <div id="qr"></div>
+        <div id="qrUrl"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn secondary" id="printBtn">印刷する</button>
+          <button class="btn secondary" id="saveBtn">画像を保存</button>
+        </div>
+      </div>
     </div>
+
+    <div class="card">
+      <label style="margin-bottom:10px">使い方</label>
+      <ol class="steps">
+        <li>表示したいサイトのURLを入力して「QRコードを作成」</li>
+        <li>QRを<b>印刷</b>、または<b>画面に表示</b>して机・壁・紙などに置く</li>
+        <li>「② カメラでAR表示」に切り替えてカメラを起動</li>
+        <li>そのQRにカメラを向けると、QRの上にサイトが浮かびます</li>
+      </ol>
+      <div class="hint">
+        ※ 既存のQR（URLが入ったもの）でもそのまま使えます。<br>
+        ※ Google等の一部サイトは埋め込みがブロックされるため、その場合は「全画面で開く」をご利用ください。
+      </div>
+    </div>
+  </section>
+
+  <!-- スキャン起動 -->
+  <section id="tab-scan" class="hidden">
+    <div class="card">
+      <span class="pill">● カメラでQRを追跡してサイトを重ねる</span>
+      <p class="hint" style="margin-top:6px">
+        カメラを起動し、URLが入ったQRコードに向けてください。QRの位置にWebサイトのパネルが重なって表示され、タップで操作できます。
+      </p>
+      <button class="btn" id="openScan">カメラを起動してARを開始</button>
+      <p class="hint">※ 初回はカメラの使用許可を「許可」してください（https接続が必要 / このページはGitHub Pagesで対応済み）。</p>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== スキャナ画面 ===================== -->
+<div id="scanView">
+  <video id="cam" playsinline muted></video>
+  <div id="reticle"></div>
+  <iframe id="panel" allow="camera;microphone;fullscreen;autoplay"></iframe>
+  <div class="finder" id="finder"></div>
+  <div id="scanTop">QRコードにカメラを向けてください</div>
+  <div id="scanBar">
+    <button class="btn secondary" id="scanBack" style="flex:0 0 38%">← 戻る</button>
+    <button class="btn" id="scanFull">サイトを全画面で開く</button>
+  </div>
+  <div id="startOverlay">
+    <div class="em">📷</div>
+    <h2>カメラを起動します</h2>
+    <p>下のボタンを押して、カメラの使用を許可してください。<br>背面カメラでQRに向けると、その上にサイトが現れます。</p>
+    <button class="btn" id="reallyStart" style="max-width:280px">カメラを許可して開始</button>
   </div>
 </div>
 
-<!-- ===================== AR画面のオーバーレイUI ===================== -->
-<div id="arUI">
-  <div id="status">マーカーを探しています…</div>
-  <div class="scan-frame" id="scanFrame">マーカー（Hiro）にカメラを向けてください</div>
-  <iframe id="webpanel" allow="camera;microphone;fullscreen"></iframe>
-  <div id="arbar">
-    <button class="btn secondary" id="backBtn">← 戻る</button>
-    <button class="btn" id="fullBtn">サイトを全画面で開く</button>
-  </div>
-</div>
-
-<!-- QRライブラリ -->
 <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
 (function(){
   "use strict";
-  var $ = function(s){return document.querySelector(s);};
+  var $=function(s){return document.querySelector(s);};
 
-  // ---------- ルーティング ----------
-  function parseHash(){
-    var h = location.hash || "";
-    if(h.indexOf("#ar")===0){
-      var q = h.split("?")[1] || "";
-      var p = new URLSearchParams(q);
-      return {ar:true, url: p.get("u") ? decodeURIComponent(p.get("u")) : ""};
-    }
-    return {ar:false};
-  }
+  /* ---------- タブ切替 ---------- */
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click",function(){
+      document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("active");});
+      t.classList.add("active");
+      var n=t.getAttribute("data-tab");
+      $("#tab-make").classList.toggle("hidden",n!=="make");
+      $("#tab-scan").classList.toggle("hidden",n!=="scan");
+    });
+  });
 
-  function baseUrl(){
-    return location.origin + location.pathname;
-  }
-  function viewerUrl(target){
-    return baseUrl() + "#ar?u=" + encodeURIComponent(target);
-  }
-
-  // ---------- ジェネレーター ----------
-  var qrObj = null;
+  /* ---------- QR作成 ---------- */
   function normalize(u){
-    u = (u||"").trim();
+    u=(u||"").trim();
     if(!u) return "";
-    if(!/^https?:\/\//i.test(u)) u = "https://" + u;
+    if(!/^https?:\/\//i.test(u)) u="https://"+u;
     return u;
   }
+  var lastUrl="";
   function makeQR(){
-    var u = normalize($("#url").value);
+    var u=normalize($("#url").value);
     if(!u){ $("#url").focus(); return; }
-    $("#url").value = u;
-    $("#qr").innerHTML = "";
-    qrObj = new QRCode($("#qr"), {
-      text: viewerUrl(u), width: 220, height: 220,
-      correctLevel: QRCode.CorrectLevel.M
-    });
-    $("#qrbox").style.display = "block";
+    $("#url").value=u; lastUrl=u;
+    $("#qr").innerHTML="";
+    new QRCode($("#qr"),{text:u,width:240,height:240,correctLevel:QRCode.CorrectLevel.H});
+    $("#qrUrl").textContent=u;
+    $("#qrbox").style.display="block";
   }
-  function openARnow(){
-    var u = normalize($("#url").value);
-    if(!u){ $("#url").focus(); return; }
-    location.hash = "#ar?u=" + encodeURIComponent(u);
-    location.reload();
+  function qrDataUrl(){
+    var c=$("#qr").querySelector("canvas");
+    if(c) return c.toDataURL("image/png");
+    var img=$("#qr").querySelector("img");
+    return img?img.src:"";
   }
-
-  // ---------- AR起動 ----------
-  function loadScript(src){
-    return new Promise(function(res,rej){
-      var s=document.createElement("script");
-      s.src=src; s.onload=res; s.onerror=function(){rej(src);};
-      document.head.appendChild(s);
-    });
+  function printQR(){
+    var d=qrDataUrl(); if(!d) return;
+    var w=window.open("","_blank");
+    w.document.write('<html><head><title>QR</title></head><body style="text-align:center;font-family:sans-serif;padding:40px">'+
+      '<img src="'+d+'" style="width:320px;height:320px"><p style="word-break:break-all;color:#444">'+lastUrl+'</p>'+
+      '<scr'+'ipt>window.onload=function(){window.print();}<\/scr'+'ipt></body></html>');
+    w.document.close();
   }
+  function saveQR(){
+    var d=qrDataUrl(); if(!d) return;
+    var a=document.createElement("a"); a.href=d; a.download="qr.png"; a.click();
+  }
+  $("#makeBtn").addEventListener("click",makeQR);
+  $("#url").addEventListener("keydown",function(e){ if(e.key==="Enter") makeQR(); });
+  $("#printBtn").addEventListener("click",printQR);
+  $("#saveBtn").addEventListener("click",saveQR);
 
-  function buildScene(targetUrl){
-    // A-Frameシーンを生成（Hiroマーカー）
-    var scene = document.createElement("a-scene");
-    scene.setAttribute("embedded","");
-    scene.setAttribute("vr-mode-ui","enabled: false");
-    scene.setAttribute("renderer","logarithmicDepthBuffer: true; precision: medium;");
-    scene.setAttribute("arjs","sourceType: webcam; debugUIEnabled: false; detectionMode: mono;");
-    scene.style.position="fixed"; scene.style.inset="0"; scene.style.zIndex="1";
+  /* ================= スキャナ / AR ================= */
+  var video=$("#cam"), panel=$("#panel"), reticle=$("#reticle"),
+      scanTop=$("#scanTop"), finder=$("#finder");
+  var W=320,H=320;          // パネル基準サイズ(px)
+  var EXPAND=2.2;           // QRに対するサイト表示倍率
+  var canvas=document.createElement("canvas"), ctx=canvas.getContext("2d",{willReadFrequently:true});
+  var stream=null, running=false, currentUrl="", miss=0, smooth=null;
 
-    var marker = document.createElement("a-marker");
-    marker.setAttribute("preset","hiro");
-    marker.setAttribute("smooth","true");
-    marker.setAttribute("smoothCount","8");
-    marker.id="marker";
+  function show(el,on){ el.style.display=on?"block":"none"; }
 
-    // 3D上のプレースホルダ（iframeが出ない場合のフォールバック表示）
-    var plane = document.createElement("a-plane");
-    plane.setAttribute("rotation","-90 0 0");
-    plane.setAttribute("width","1.6"); plane.setAttribute("height","1.0");
-    plane.setAttribute("color","#5b8cff");
-    plane.setAttribute("opacity","0.18");
+  $("#openScan").addEventListener("click",function(){
+    $("#home").style.display="none";
+    $("#scanView").style.display="block";
+    $("#startOverlay").style.display="flex";
+  });
+  $("#scanBack").addEventListener("click",stopScan);
+  $("#reallyStart").addEventListener("click",startCamera);
+  $("#scanFull").addEventListener("click",function(){
+    if(currentUrl) window.open(currentUrl,"_blank");
+  });
 
-    var text = document.createElement("a-text");
-    text.setAttribute("value","Web Site\n"+targetUrl);
-    text.setAttribute("align","center");
-    text.setAttribute("color","#ffffff");
-    text.setAttribute("width","3");
-    text.setAttribute("rotation","-90 0 0");
-    text.setAttribute("position","0 0.02 0");
-
-    marker.appendChild(plane);
-    marker.appendChild(text);
-    marker.setAttribute("web-anchor","");
-
-    var cam = document.createElement("a-entity");
-    cam.setAttribute("camera","");
-
-    scene.appendChild(marker);
-    scene.appendChild(cam);
-    document.body.appendChild(scene);
+  function stopScan(){
+    running=false;
+    if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
+    panel.src="about:blank"; currentUrl=""; smooth=null;
+    show(panel,false); show(reticle,false);
+    $("#scanView").style.display="none";
+    $("#home").style.display="block";
   }
 
-  // マーカー位置にiframeを追従させるA-Frameコンポーネント
-  function registerComponent(){
-    if(!window.AFRAME) return;
-    AFRAME.registerComponent("web-anchor",{
-      init:function(){
-        var self=this;
-        this.visible=false;
-        this.panel=document.getElementById("webpanel");
-        this.el.addEventListener("markerFound",function(){
-          self.visible=true;
-          document.getElementById("status").textContent="サイトを表示中 — タップで操作できます";
-          document.getElementById("scanFrame").classList.add("hidden");
-          self.panel.style.display="block";
-        });
-        this.el.addEventListener("markerLost",function(){
-          self.visible=false;
-          document.getElementById("status").textContent="マーカーを探しています…";
-          document.getElementById("scanFrame").classList.remove("hidden");
-          self.panel.style.display="none";
-        });
-      },
-      tick:function(){
-        if(!this.visible) return;
-        var sceneEl=this.el.sceneEl;
-        var cam=sceneEl && sceneEl.camera;
-        if(!cam) return;
-        try{
-          var obj=this.el.object3D;
-          var center=new THREE.Vector3();
-          obj.getWorldPosition(center);
-          // マーカー右端の点（幅0.8 = plane半幅）
-          var edge=new THREE.Vector3(0.8,0,0).applyQuaternion(obj.getWorldQuaternion(new THREE.Quaternion())).add(center);
-          var w=window.innerWidth, h=window.innerHeight;
-          var c=center.clone().project(cam);
-          var e=edge.clone().project(cam);
-          if(c.z>1){ return; } // カメラ背面
-          var cx=(c.x*0.5+0.5)*w, cy=(-c.y*0.5+0.5)*h;
-          var ex=(e.x*0.5+0.5)*w, ey=(-e.y*0.5+0.5)*h;
-          var half=Math.hypot(ex-cx,ey-cy);
-          var pw=Math.max(120,Math.min(half*2,w*0.96));
-          var ph=pw*0.62;
-          var p=this.panel;
-          p.style.width=pw+"px";
-          p.style.height=ph+"px";
-          p.style.left=(cx-pw/2)+"px";
-          p.style.top=(cy-ph/2)+"px";
-        }catch(e){/* ignore frame errors */}
-      }
-    });
-  }
-
-  async function startAR(targetUrl){
-    document.getElementById("home").style.display="none";
-    document.getElementById("arUI").style.display="block";
-    document.getElementById("status").textContent="カメラを起動中…";
-
-    var panel=document.getElementById("webpanel");
-    panel.src=targetUrl;
-    document.getElementById("fullBtn").onclick=function(){ window.open(targetUrl,"_blank"); };
-    document.getElementById("backBtn").onclick=function(){ location.hash=""; location.reload(); };
-
-    try{
-      await loadScript("https://aframe.io/releases/1.3.0/aframe.min.js");
-      registerComponent();
-      await loadScript("https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js");
-      buildScene(targetUrl);
-      document.getElementById("status").textContent="マーカーを探しています…";
-    }catch(err){
-      document.getElementById("status").textContent="読み込みに失敗しました。通信環境を確認してください。";
+  function startCamera(){
+    $("#startOverlay").style.display="none";
+    scanTop.textContent="カメラを起動中…";
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      scanTop.textContent="このブラウザはカメラに対応していません";
+      $("#startOverlay").style.display="flex"; return;
     }
+    navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:"environment"}},audio:false
+    }).then(function(s){
+      stream=s; video.srcObject=s;
+      video.setAttribute("playsinline","");
+      return video.play();
+    }).then(function(){
+      running=true; scanTop.textContent="QRコードにカメラを向けてください";
+      requestAnimationFrame(loop);
+    }).catch(function(err){
+      scanTop.textContent="カメラを起動できませんでした："+(err && err.name ? err.name : "エラー");
+      $("#startOverlay").style.display="flex";
+    });
   }
 
-  // ---------- 初期化 ----------
-  var route=parseHash();
-  if(route.ar && route.url){
-    startAR(route.url);
-  }else if(route.ar && !route.url){
-    document.getElementById("home").style.display="block";
-  }else{
-    $("#makeBtn").addEventListener("click",makeQR);
-    $("#openArBtn").addEventListener("click",openARnow);
-    $("#url").addEventListener("keydown",function(e){ if(e.key==="Enter") makeQR(); });
-    $("#markerLink").href="https://raw.githack.com/AR-js-org/AR.js/master/data/images/hiro.png";
-    $("#markerLink").target="_blank";
+  /* 検出座標(処理canvas) → 画面座標（object-fit:coverを考慮） */
+  function toScreen(px,py){
+    var vW=video.videoWidth, vH=video.videoHeight;
+    var sW=window.innerWidth, sH=window.innerHeight;
+    var vx=px*vW/canvas.width, vy=py*vH/canvas.height;
+    var vAsp=vW/vH, sAsp=sW/sH, scale, offX=0, offY=0;
+    if(vAsp>sAsp){ scale=sH/vH; offX=(sW-vW*scale)/2; }
+    else { scale=sW/vW; offY=(sH-vH*scale)/2; }
+    return {x:vx*scale+offX, y:vy*scale+offY};
+  }
+
+  /* ---- 3x3行列ユーティリティ（透視変換 matrix3d 用） ---- */
+  function adj(m){return [m[4]*m[8]-m[5]*m[7],m[2]*m[7]-m[1]*m[8],m[1]*m[5]-m[2]*m[4],
+    m[5]*m[6]-m[3]*m[8],m[0]*m[8]-m[2]*m[6],m[2]*m[3]-m[0]*m[5],
+    m[3]*m[7]-m[4]*m[6],m[1]*m[6]-m[0]*m[7],m[0]*m[4]-m[1]*m[3]];}
+  function mm(a,b){var r=[];for(var i=0;i<3;i++)for(var j=0;j<3;j++){var s=0;
+    for(var k=0;k<3;k++)s+=a[3*i+k]*b[3*k+j];r[3*i+j]=s;}return r;}
+  function mv(m,v){return [m[0]*v[0]+m[1]*v[1]+m[2]*v[2],
+    m[3]*v[0]+m[4]*v[1]+m[5]*v[2],m[6]*v[0]+m[7]*v[1]+m[8]*v[2]];}
+  function basis(x1,y1,x2,y2,x3,y3,x4,y4){
+    var m=[x1,x2,x3,y1,y2,y3,1,1,1];
+    var v=mv(adj(m),[x4,y4,1]);
+    return mm(m,[v[0],0,0,0,v[1],0,0,0,v[2]]);
+  }
+  function projection(s,d){ return mm(d,adj(s)); }
+
+  function applyPanel(tl,tr,bl,br){
+    var s=basis(0,0, W,0, 0,H, W,H);
+    var d=basis(tl.x,tl.y, tr.x,tr.y, bl.x,bl.y, br.x,br.y);
+    var t=projection(s,d);
+    for(var i=0;i<9;i++) t[i]=t[i]/t[8];
+    for(var j=0;j<9;j++){ if(!isFinite(t[j])) return; }
+    var m3d=[t[0],t[3],0,t[6], t[1],t[4],0,t[7], 0,0,1,0, t[2],t[5],0,t[8]];
+    var css="matrix3d("+m3d.join(",")+")";
+    panel.style.transform=css; reticle.style.transform=css;
+  }
+
+  function expand(c,p,f){ return {x:c.x+(p.x-c.x)*f, y:c.y+(p.y-c.y)*f}; }
+  function lerpPt(a,b,t){ return {x:a.x+(b.x-a.x)*t, y:a.y+(b.y-a.y)*t}; }
+
+  function loop(){
+    if(!running) return;
+    if(video.readyState===video.HAVE_ENOUGH_DATA && video.videoWidth){
+      var vW=video.videoWidth, vH=video.videoHeight;
+      var cw=Math.min(520,vW), ch=Math.round(cw*vH/vW);
+      if(canvas.width!==cw){ canvas.width=cw; canvas.height=ch; }
+      ctx.drawImage(video,0,0,cw,ch);
+      var img=ctx.getImageData(0,0,cw,ch);
+      var code=null;
+      try{ code=jsQR(img.data,cw,ch,{inversionAttempts:"dontInvert"}); }catch(e){}
+      if(code && code.data){
+        var loc=code.location;
+        var tl=toScreen(loc.topLeftCorner.x,loc.topLeftCorner.y);
+        var tr=toScreen(loc.topRightCorner.x,loc.topRightCorner.y);
+        var br=toScreen(loc.bottomRightCorner.x,loc.bottomRightCorner.y);
+        var bl=toScreen(loc.bottomLeftCorner.x,loc.bottomLeftCorner.y);
+        var c={x:(tl.x+tr.x+br.x+bl.x)/4, y:(tl.y+tr.y+br.y+bl.y)/4};
+        var q={tl:expand(c,tl,EXPAND), tr:expand(c,tr,EXPAND),
+               br:expand(c,br,EXPAND), bl:expand(c,bl,EXPAND)};
+        if(!smooth) smooth=q;
+        else{ var a=0.45; smooth={tl:lerpPt(smooth.tl,q.tl,a),tr:lerpPt(smooth.tr,q.tr,a),
+               br:lerpPt(smooth.br,q.br,a),bl:lerpPt(smooth.bl,q.bl,a)}; }
+
+        var u=normalize(code.data);
+        if(/^https?:\/\//i.test(u)){
+          if(u!==currentUrl){ currentUrl=u; panel.src=u; scanTop.textContent="表示中： "+u; }
+          show(panel,true); show(reticle,true);
+          applyPanel(smooth.tl,smooth.tr,smooth.bl,smooth.br);
+          finder.style.display="none";
+        }else{
+          scanTop.textContent="このQRはURLではありません："+code.data.slice(0,40);
+        }
+        miss=0;
+      }else{
+        miss++;
+        if(miss>18){ show(panel,false); show(reticle,false); smooth=null;
+          finder.style.display="block";
+          scanTop.textContent=currentUrl?"QRを見失いました。もう一度向けてください":"QRコードにカメラを向けてください";
+        }
+      }
+    }
+    requestAnimationFrame(loop);
   }
 })();
 </script>
