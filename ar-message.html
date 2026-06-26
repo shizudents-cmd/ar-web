@@ -3,12 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>AR Message — QRで動画と3Dメッセージを届ける</title>
+<title>AR Message — QRにかざすと動画とメッセージが流れる</title>
 <style>
-  :root{
-    --bg:#0e1220; --card:#171c2e; --ink:#eef1f8; --sub:#9aa3bd;
-    --accent:#5b8cff; --accent2:#9b6bff; --line:#2a3148; --ok:#3ddc97;
-  }
+  :root{--bg:#0e1220;--card:#171c2e;--ink:#eef1f8;--sub:#9aa3bd;
+    --accent:#5b8cff;--accent2:#9b6bff;--line:#2a3148;--ok:#3ddc97;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
   body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
@@ -18,25 +16,23 @@
   header.brand{display:flex;align-items:center;gap:10px;margin:6px 0 16px}
   .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));
     display:grid;place-items:center;font-size:20px}
-  h1{font-size:18px;margin:0}
-  .sub{color:var(--sub);font-size:12.5px;margin-top:2px}
+  h1{font-size:18px;margin:0}.sub{color:var(--sub);font-size:12.5px;margin-top:2px}
+  .tabs{display:flex;gap:8px;background:#101424;border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:16px}
+  .tab{flex:1;text-align:center;padding:11px;border-radius:9px;font-size:14px;font-weight:600;color:var(--sub);cursor:pointer}
+  .tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
-  label{display:block;font-size:13px;color:var(--sub);margin:14px 0 7px}
-  label:first-child{margin-top:0}
+  label{display:block;font-size:13px;color:var(--sub);margin:14px 0 7px}label:first-child{margin-top:0}
   input,textarea{width:100%;padding:13px 14px;border-radius:11px;border:1px solid var(--line);
     background:#0f1424;color:var(--ink);font-size:15px;outline:none;font-family:inherit}
-  textarea{min-height:120px;resize:vertical;line-height:1.6}
+  textarea{min-height:110px;resize:vertical;line-height:1.6}
   input:focus,textarea:focus{border-color:var(--accent)}
   .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:0;
     border-radius:12px;font-size:15.5px;font-weight:600;cursor:pointer;margin-top:12px;color:#fff;
     background:linear-gradient(135deg,var(--accent),var(--accent2))}
-  .btn.secondary{background:#222a42;border:1px solid var(--line)}
-  .btn:active{transform:translateY(1px)}
-  .row{display:flex;gap:10px}
-  .row .btn{margin-top:0}
+  .btn.secondary{background:#222a42;border:1px solid var(--line)}.btn:active{transform:translateY(1px)}
+  .row{display:flex;gap:10px}.row .btn{margin-top:0}
   .opts{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:6px}
-  .opt{display:flex;align-items:center;gap:7px;font-size:13.5px;color:#c7cde0}
-  .opt input{width:auto}
+  .opt{display:flex;align-items:center;gap:7px;font-size:13.5px;color:#c7cde0}.opt input{width:auto}
   #qrbox{display:none;text-align:center;margin-top:18px}
   #qr{display:inline-block;background:#fff;padding:16px;border-radius:14px}
   #qr img,#qr canvas{display:block}
@@ -46,37 +42,40 @@
     padding:3px 9px;border-radius:999px;margin-bottom:6px}
   .hidden{display:none!important}
 
-  /* ===== 体験画面 ===== */
-  #show{position:fixed;inset:0;z-index:50;background:#000;display:none;overflow:hidden}
-  #bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:linear-gradient(160deg,#10142a,#241a3a)}
-  #scene{position:absolute;inset:0;perspective:900px;perspective-origin:50% 45%}
-  #telop{position:absolute;inset:0;transform-style:preserve-3d}
-  .msg{position:absolute;left:50%;top:46%;width:90%;max-width:520px;text-align:center;
-    font-weight:800;font-size:34px;line-height:1.35;letter-spacing:.5px;opacity:0;
-    color:#fff;background:linear-gradient(180deg,#ffffff,#bcd0ff);-webkit-background-clip:text;background-clip:text;
-    -webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 0 rgba(40,70,160,.55)) drop-shadow(0 0 18px rgba(120,160,255,.55));
-    transform:translate(-50%,-50%) translateZ(-700px) translateY(50px) rotateX(22deg)}
+  /* ===== AR ビュー ===== */
+  #scanView{position:fixed;inset:0;z-index:50;background:#000;display:none}
+  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+  #scene{position:absolute;inset:0;perspective:1000px;perspective-origin:50% 45%;pointer-events:none}
+  #ytPanel{position:absolute;left:0;top:0;width:320px;height:180px;transform-origin:0 0;will-change:transform;
+    display:none;border-radius:8px;overflow:hidden;box-shadow:0 10px 36px rgba(0,0,0,.5);
+    border:2px solid rgba(150,180,255,.6);background:#000;pointer-events:auto}
+  #ytPanel iframe{width:100%;height:100%;border:0;display:block}
+  #reticle{position:absolute;left:0;top:0;width:320px;height:180px;transform-origin:0 0;
+    border:3px solid var(--ok);border-radius:8px;display:none;pointer-events:none}
+  #telop{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
+  .msg{position:absolute;left:50%;top:30%;width:90%;max-width:520px;text-align:center;
+    font-weight:800;font-size:30px;line-height:1.35;letter-spacing:.5px;opacity:0;color:#fff;
+    background:linear-gradient(180deg,#ffffff,#bcd0ff);-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 0 rgba(40,70,160,.55)) drop-shadow(0 0 16px rgba(120,160,255,.6));
+    transform:translate(-50%,-50%)}
   .msg.run{animation:flow var(--dur,4.2s) cubic-bezier(.2,.7,.25,1) forwards}
   @keyframes flow{
-    0%{opacity:0;transform:translate(-50%,-50%) translateZ(-700px) translateY(60px) rotateX(22deg) scale(.6)}
-    16%{opacity:1}
-    78%{opacity:1}
-    100%{opacity:0;transform:translate(-50%,-50%) translateZ(380px) translateY(-200px) rotateX(22deg) scale(1.25)}
+    0%{opacity:0;transform:translate(-50%,-50%) translateZ(-650px) translateY(60px) rotateX(20deg) scale(.6)}
+    16%{opacity:1}78%{opacity:1}
+    100%{opacity:0;transform:translate(-50%,-50%) translateZ(360px) translateY(-180px) rotateX(20deg) scale(1.25)}
   }
-  #videoWrap{position:absolute;left:50%;bottom:13%;transform:translateX(-50%) rotateX(8deg);
-    width:78vw;max-width:460px;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
-    box-shadow:0 18px 50px rgba(0,0,0,.55);border:2px solid rgba(150,180,255,.5);display:none;background:#000}
-  #videoWrap iframe,#videoWrap video{width:100%;height:100%;border:0;display:block;object-fit:cover}
-  #videoWrap.portrait{aspect-ratio:9/16;width:60vw;max-width:300px;bottom:9%}
-  #videoWrap.portrait iframe{background:#fff}
-  #showBar{position:absolute;left:0;right:0;bottom:0;z-index:60;display:flex;gap:10px;padding:14px;
-    background:linear-gradient(0deg,rgba(8,10,18,.85),transparent);pointer-events:none}
-  #showBar .btn{margin-top:0;pointer-events:auto}
+  #scanTop{position:absolute;top:0;left:0;right:0;z-index:60;text-align:center;font-size:13px;
+    padding:12px;color:#fff;background:rgba(8,10,18,.55);pointer-events:none;word-break:break-all}
+  #scanBar{position:absolute;left:0;right:0;bottom:0;z-index:60;display:flex;gap:10px;padding:14px;
+    background:linear-gradient(0deg,rgba(8,10,18,.9),transparent)}
+  #scanBar .btn{margin-top:0}
+  .finder{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60vw;height:60vw;
+    max-width:300px;max-height:300px;border:2px dashed rgba(255,255,255,.55);border-radius:18px;z-index:55;pointer-events:none}
   #startOverlay{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;
     align-items:center;justify-content:center;text-align:center;padding:30px;gap:6px;
     background:radial-gradient(800px 600px at 50% 30%,#1a2046,#0a0d18)}
-  #startOverlay .em{font-size:46px}
-  #startOverlay h2{margin:8px 0 0;font-size:20px}
+  #startOverlay .em{font-size:46px}#startOverlay h2{margin:8px 0 0;font-size:20px}
   #startOverlay p{color:var(--sub);font-size:13.5px;line-height:1.7;margin:6px 0 0}
 </style>
 </head>
@@ -86,280 +85,340 @@
 <div class="wrap" id="home">
   <header class="brand">
     <div class="logo">🎬</div>
-    <div>
-      <h1>AR Message</h1>
-      <div class="sub">QRを読むと、動画と3Dメッセージが空間に流れる</div>
-    </div>
+    <div><h1>AR Message</h1>
+      <div class="sub">QRにかざすと、動画とメッセージが空間に流れる</div></div>
   </header>
 
-  <div class="card">
-    <span class="pill">● 動画 ＋ 流れる3Dテロップ</span>
-    <label for="msgs">メッセージ（1行＝1つのテロップ・上から順に流れます）</label>
-    <textarea id="msgs" placeholder="おめでとう！&#10;いつもありがとう&#10;これからもよろしくね"></textarea>
+  <div id="fileWarn" class="card hidden" style="border-color:#7a4a1f;background:#2a1d10">
+    ⚠ このページは「パソコン内のファイル(file://)」として開かれています。<br>
+    この状態のQRはスマホで開けません。次の公開URLを開いてください：<br>
+    <b style="color:#9bd0ff;word-break:break-all">https://shizudents-cmd.github.io/ar-web/ar-message.html</b>
+  </div>
 
-    <label>端末の動画を使う（いちばん簡単・この端末で再生）</label>
-    <label for="localVid" class="btn secondary" style="margin-top:0">📁 スマホ内の動画を選ぶ</label>
-    <input id="localVid" type="file" accept="video/*" style="display:none">
-    <div id="localName" style="font-size:12px;color:var(--ok);margin-top:8px"></div>
+  <div class="tabs">
+    <div class="tab active" data-tab="make">① QRを作る</div>
+    <div class="tab" data-tab="scan">② カメラでAR表示</div>
+  </div>
 
-    <label for="video">またはリンクで指定（YouTube / Instagram / TikTok / Vimeo / mp4）</label>
-    <input id="video" type="url" inputmode="url" placeholder="https://youtu.be/..." autocomplete="off">
-
-    <div class="opts">
-      <span class="opt"><input type="checkbox" id="loop" checked> テロップを繰り返す</span>
-      <span class="opt">速さ
-        <select id="speed" style="margin-left:4px;padding:6px 8px;border-radius:8px;background:#0f1424;color:#eef1f8;border:1px solid var(--line)">
-          <option value="5.2">ゆっくり</option>
-          <option value="4.2" selected>標準</option>
-          <option value="3.2">速い</option>
-        </select>
-      </span>
-    </div>
-
-    <button class="btn" id="previewBtn">プレビュー再生</button>
-    <button class="btn secondary" id="makeBtn">QRコード / 共有リンクを作成</button>
-
-    <div id="qrbox">
-      <div id="qr"></div>
-      <div id="linkBox"></div>
-      <div class="row" style="margin-top:14px">
-        <button class="btn secondary" id="copyBtn">リンクをコピー</button>
-        <button class="btn secondary" id="printBtn">QRを印刷</button>
+  <section id="tab-make">
+    <div class="card">
+      <span class="pill">● 動画 ＋ 流れる3Dテロップ</span>
+      <label for="msgs">メッセージ（1行＝1つのテロップ・上から順に流れます）</label>
+      <textarea id="msgs" placeholder="おめでとう！&#10;いつもありがとう&#10;これからもよろしくね"></textarea>
+      <label for="video">YouTube動画のリンク（限定公開でもOK・空欄でもOK）</label>
+      <input id="video" type="url" inputmode="url" placeholder="https://youtu.be/..." autocomplete="off">
+      <div class="opts">
+        <span class="opt">テロップ速さ
+          <select id="speed" style="margin-left:4px;padding:6px 8px;border-radius:8px;background:#0f1424;color:#eef1f8;border:1px solid var(--line)">
+            <option value="5.2">ゆっくり</option><option value="4.2" selected>標準</option><option value="3.2">速い</option>
+          </select>
+        </span>
+      </div>
+      <button class="btn" id="makeBtn">QRコード / 共有リンクを作成</button>
+      <div id="qrbox">
+        <div id="qr"></div>
+        <div id="linkBox"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn secondary" id="copyBtn">リンクをコピー</button>
+          <button class="btn secondary" id="printBtn">QRを印刷</button>
+        </div>
       </div>
     </div>
-  </div>
+    <div class="card">
+      <label style="margin:0 0 8px">使い方</label>
+      <p class="hint" style="margin-top:0">
+        メッセージと動画リンクを入れてQRを作成・印刷します。「② カメラでAR表示」でカメラを起動し、
+        その<b>QRにカメラを向けている間だけ</b>、QRの上に動画が再生され、メッセージが流れます。
+        QRを外すと一時停止し、また向けると続きから再生されます。
+      </p>
+    </div>
+  </section>
 
-  <div class="card">
-    <label style="margin:0 0 8px">ポイント</label>
-    <p class="hint" style="margin-top:0">
-      QRは“起動するだけ”。読み取ったら端末を自由に動かせ、ずっとかざし続ける必要はありません。<br>
-      動画は自分のリンクを使うので、サイト埋め込み制限の影響を受けにくくなります（YouTube等の埋め込み可能な動画を推奨）。
-    </p>
-  </div>
+  <section id="tab-scan" class="hidden">
+    <div class="card">
+      <span class="pill">● QRに向けている間だけ表示</span>
+      <p class="hint" style="margin-top:6px">
+        カメラを起動し、メッセージQRに向けてください。QRの位置に動画が重なり、メッセージが流れます。
+        音は最初に「🔊 音を出す」を1回タップしてください（iPhoneの仕様のため）。
+      </p>
+      <button class="btn" id="openScan">カメラを起動してARを開始</button>
+    </div>
+  </section>
 </div>
 
-<!-- ===================== 体験画面 ===================== -->
-<div id="show">
-  <video id="bg" playsinline muted></video>
+<!-- ===================== AR画面 ===================== -->
+<div id="scanView">
+  <video id="cam" playsinline muted></video>
   <div id="scene">
+    <div id="reticle"></div>
+    <div id="ytPanel"><div id="ytPlayer"></div></div>
     <div id="telop"></div>
-    <div id="videoWrap"></div>
   </div>
-  <div id="showBar">
-    <button class="btn secondary" id="showBack" style="flex:0 0 36%">← 戻る</button>
-    <button class="btn" id="replayBtn">もう一度</button>
+  <div class="finder" id="finder"></div>
+  <div id="scanTop">QRコードにカメラを向けてください</div>
+  <div id="scanBar">
+    <button class="btn secondary" id="muteBtn" style="flex:0 0 34%">🔊 音を出す</button>
+    <button class="btn secondary" id="scanBack">← 戻る</button>
   </div>
   <div id="startOverlay">
     <div class="em">✨</div>
-    <h2 id="startTitle">メッセージを再生</h2>
-    <p>タップすると、カメラ越しの空間に<br>動画とメッセージが流れます。</p>
-    <button class="btn" id="reallyStart" style="max-width:280px">タップして開始</button>
+    <h2>カメラを起動します</h2>
+    <p>タップしてカメラを許可し、<br>メッセージQRに向けてください。</p>
+    <button class="btn" id="reallyStart" style="max-width:280px">カメラを許可して開始</button>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
 (function(){
   "use strict";
   var $=function(s){return document.querySelector(s);};
 
+  /* ---------- タブ ---------- */
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click",function(){
+      document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("active");});
+      t.classList.add("active");
+      var n=t.getAttribute("data-tab");
+      $("#tab-make").classList.toggle("hidden",n!=="make");
+      $("#tab-scan").classList.toggle("hidden",n!=="scan");
+    });
+  });
+
+  /* ---------- URLユーティリティ ---------- */
   function baseUrl(){ return location.origin+location.pathname; }
-
-  /* ---------- 入力 → 設定オブジェクト ---------- */
-  var localVideoURL=null, localVideoName="";
-  $("#localVid").addEventListener("change",function(e){
-    var f=e.target.files && e.target.files[0];
-    if(!f) return;
-    if(localVideoURL) URL.revokeObjectURL(localVideoURL);
-    localVideoURL=URL.createObjectURL(f); localVideoName=f.name;
-    $("#localName").textContent="選択中： "+f.name+"（この端末で再生されます）";
-    $("#video").value="";
-  });
-  $("#video").addEventListener("input",function(){
-    if($("#video").value.trim()){ localVideoURL=null; localVideoName=""; $("#localName").textContent=""; $("#localVid").value=""; }
-  });
-
-  function readConfig(){
-    var msgs=$("#msgs").value.split("\n").map(function(s){return s.trim();}).filter(Boolean);
-    var v=($("#video").value||"").trim();
-    if(!v && localVideoURL) v=localVideoURL;
-    return {
-      m:msgs,
-      v:v,
-      loop:$("#loop").checked?1:0,
-      dur:$("#speed").value
-    };
+  function ytId(url){
+    if(!url) return "";
+    var m=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([\w-]{6,})/);
+    return m?m[1]:"";
   }
   function configToHash(c){
     var p=new URLSearchParams();
     p.set("m",c.m.join("|"));
-    if(c.v) p.set("v",c.v);
-    p.set("loop",c.loop);
+    var id=ytId(c.v);
+    if(id) p.set("y",id);
     p.set("dur",c.dur);
     return "#show?"+p.toString();
   }
-  function parseHash(){
-    var h=location.hash||"";
-    if(h.indexOf("#show")!==0) return null;
-    var p=new URLSearchParams(h.split("?")[1]||"");
+  function parseShareLink(str){
+    var h=str.indexOf("#show");
+    if(h<0) return null;
+    var qs=str.slice(h).split("?")[1]||"";
+    var p=new URLSearchParams(qs);
     return {
       m:(p.get("m")||"").split("|").map(function(s){return s.trim();}).filter(Boolean),
-      v:p.get("v")||"",
-      loop:p.get("loop")==="1",
+      y:p.get("y")||"",
       dur:parseFloat(p.get("dur")||"4.2")
     };
   }
 
-  /* ---------- 動画URL判定 ---------- */
-  function videoEmbed(url){
-    if(!url) return null;
-    if(/^blob:|^data:/.test(url)) return {type:"video",src:url,portrait:true};
-    var yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([\w-]{6,})/);
-    if(yt) return {type:"iframe",src:"https://www.youtube.com/embed/"+yt[1]+"?playsinline=1&rel=0&autoplay=1&modestbranding=1"};
-    var ig=url.match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/);
-    if(ig){ var kind=(ig[1]==="reels")?"reel":ig[1];
-      return {type:"iframe",src:"https://www.instagram.com/"+kind+"/"+ig[2]+"/embed/",portrait:true}; }
-    var tk=url.match(/tiktok\.com\/.*\/video\/(\d+)/);
-    if(tk) return {type:"iframe",src:"https://www.tiktok.com/embed/v2/"+tk[1],portrait:true};
-    var vm=url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-    if(vm) return {type:"iframe",src:"https://player.vimeo.com/video/"+vm[1]+"?autoplay=1&playsinline=1"};
-    if(/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(url)) return {type:"video",src:url};
-    // 不明なURLはiframeで試す
-    return {type:"iframe",src:url};
+  /* ---------- 作成 ---------- */
+  function readConfig(){
+    return {
+      m:$("#msgs").value.split("\n").map(function(s){return s.trim();}).filter(Boolean),
+      v:($("#video").value||"").trim(),
+      dur:$("#speed").value
+    };
   }
-
-  /* ---------- QR / リンク ---------- */
   function makeQR(){
     var c=readConfig();
-    if(!c.m.length && !c.v){ $("#msgs").focus(); return; }
-    if(/^blob:|^data:/.test(c.v)){
-      alert("「スマホ内の動画」はこの端末だけで再生できる動画のため、QRや共有リンクには含められません。\n他の人にもQRで配るには、動画リンク（YouTube等）を使うか、動画ファイルをネットに置いてください。\n\nメッセージだけのQRを作成します。");
-      c.v="";
-    }
+    if(!c.m.length && !ytId(c.v)){ $("#msgs").focus(); return; }
     var link=baseUrl()+configToHash(c);
     $("#qr").innerHTML="";
-    new QRCode($("#qr"),{text:link,width:240,height:240,correctLevel:QRCode.CorrectLevel.L});
+    new QRCode($("#qr"),{text:link,width:260,height:260,correctLevel:QRCode.CorrectLevel.M});
     $("#linkBox").textContent=link;
     $("#qrbox").style.display="block";
     $("#qrbox").dataset.link=link;
-    if(link.length>900){
-      $("#linkBox").textContent=link+"  ⚠ 文字数が多くQRが読み取りにくい場合があります。メッセージを短めにするか、リンク共有をご利用ください。";
-    }
   }
   function copyLink(){
-    var link=$("#qrbox").dataset.link||"";
-    if(!link) return;
+    var link=$("#qrbox").dataset.link||""; if(!link) return;
     if(navigator.clipboard) navigator.clipboard.writeText(link).then(function(){
       $("#copyBtn").textContent="コピーしました"; setTimeout(function(){$("#copyBtn").textContent="リンクをコピー";},1500);
     });
   }
   function printQR(){
-    var c=$("#qr").querySelector("canvas"); var img=$("#qr").querySelector("img");
-    var d=c?c.toDataURL("image/png"):(img?img.src:""); if(!d) return;
+    var cv=$("#qr").querySelector("canvas"); var img=$("#qr").querySelector("img");
+    var d=cv?cv.toDataURL("image/png"):(img?img.src:""); if(!d) return;
     var w=window.open("","_blank");
     w.document.write('<html><head><title>QR</title></head><body style="text-align:center;font-family:sans-serif;padding:40px">'+
       '<img src="'+d+'" style="width:320px;height:320px">'+
       '<scr'+'ipt>window.onload=function(){window.print();}<\/scr'+'ipt></body></html>');
     w.document.close();
   }
-
   $("#makeBtn").addEventListener("click",makeQR);
   $("#copyBtn").addEventListener("click",copyLink);
   $("#printBtn").addEventListener("click",printQR);
-  $("#previewBtn").addEventListener("click",function(){
-    var c=readConfig();
-    if(!c.m.length && !c.v){ $("#msgs").focus(); return; }
-    startExperience({m:c.m,v:c.v,loop:!!c.loop,dur:parseFloat(c.dur)});
+
+  /* ================= YouTube IFrame API ================= */
+  var player=null, ytReady=false, curId="", wantPlaying=false, wantMuted=true;
+  var ytScript=document.createElement("script");
+  ytScript.src="https://www.youtube.com/iframe_api";
+  document.head.appendChild(ytScript);
+  window.onYouTubeIframeAPIReady=function(){ ytReady=true; };
+
+  function ensurePlayer(id){
+    if(!ytReady || !id) return;
+    if(!player){
+      player=new YT.Player("ytPlayer",{
+        width:"100%",height:"100%",videoId:id,
+        playerVars:{playsinline:1,controls:0,rel:0,modestbranding:1,fs:0,disablekb:1},
+        events:{ onReady:function(e){
+          if(wantMuted) e.target.mute(); else e.target.unMute();
+          if(wantPlaying) e.target.playVideo();
+        }}
+      });
+      curId=id;
+    }else if(id!==curId){
+      curId=id; try{ player.loadVideoById(id); }catch(e){}
+    }
+  }
+  function ytPlay(){ wantPlaying=true; if(player&&player.playVideo){ try{player.playVideo();}catch(e){} } }
+  function ytPause(){ wantPlaying=false; if(player&&player.pauseVideo){ try{player.pauseVideo();}catch(e){} } }
+  $("#muteBtn").addEventListener("click",function(){
+    wantMuted=!wantMuted;
+    if(player){ try{ wantMuted?player.mute():player.unMute(); }catch(e){} }
+    $("#muteBtn").textContent=wantMuted?"🔊 音を出す":"🔇 消音";
   });
 
-  /* ================= 体験 ================= */
-  var bg=$("#bg"), telop=$("#telop"), videoWrap=$("#videoWrap"),
-      scene=$("#show"), startOverlay=$("#startOverlay");
-  var stream=null, cfg=null, timer=null, idx=0;
+  /* ================= スキャナ / 追従 ================= */
+  var video=$("#cam"), ytPanel=$("#ytPanel"), reticle=$("#reticle"),
+      telop=$("#telop"), scanTop=$("#scanTop"), finder=$("#finder");
+  var W=320,H=180, EXPAND=2.4;
+  var canvas=document.createElement("canvas"), ctx=canvas.getContext("2d",{willReadFrequently:true});
+  var stream=null, running=false, miss=0, smooth=null, visible=false;
+  var msgs=[], dur=4.2, telopTimer=null, telopIdx=0;
 
-  function startExperience(c){
-    cfg=c;
-    $("#home").style.display="none";
-    scene.style.display="block";
-    startOverlay.style.display="flex";
-    $("#startTitle").textContent = c.m.length? c.m[0] : "メッセージを再生";
+  $("#openScan").addEventListener("click",function(){
+    $("#home").style.display="none"; $("#scanView").style.display="block"; $("#startOverlay").style.display="flex";
+  });
+  $("#scanBack").addEventListener("click",stopScan);
+  $("#reallyStart").addEventListener("click",startCamera);
+
+  function stopScan(){
+    running=false;
+    if(telopTimer){ clearTimeout(telopTimer); telopTimer=null; }
+    if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
+    ytPause(); ytPanel.style.display="none"; reticle.style.display="none"; telop.innerHTML="";
+    $("#scanView").style.display="none"; $("#home").style.display="block";
   }
 
-  $("#reallyStart").addEventListener("click",beginPlayback);
-  $("#showBack").addEventListener("click",stopExperience);
-  $("#replayBtn").addEventListener("click",function(){ idx=0; runTelop(); });
-
-  function beginPlayback(){
-    startOverlay.style.display="none";
-    // カメラ背景（失敗してもグラデ背景で続行）
-    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-      navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false})
-        .then(function(s){ stream=s; bg.srcObject=s; bg.play().catch(function(){}); })
-        .catch(function(){ /* カメラ無しでも続行 */ });
+  function startCamera(){
+    $("#startOverlay").style.display="none"; scanTop.textContent="カメラを起動中…";
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+      scanTop.textContent="このブラウザはカメラに対応していません"; $("#startOverlay").style.display="flex"; return;
     }
-    // 動画
-    var emb=videoEmbed(cfg.v);
-    videoWrap.innerHTML="";
-    if(emb){
-      videoWrap.classList.toggle("portrait", !!emb.portrait);
-      if(emb.type==="iframe"){
-        var f=document.createElement("iframe");
-        f.setAttribute("allow","autoplay;encrypted-media;picture-in-picture;fullscreen");
-        f.setAttribute("allowfullscreen","");
-        f.setAttribute("scrolling","no");
-        f.src=emb.src; videoWrap.appendChild(f);
-      }else{
-        var v=document.createElement("video");
-        v.src=emb.src; v.setAttribute("playsinline",""); v.controls=true; v.autoplay=true;
-        videoWrap.appendChild(v);
-        v.play().catch(function(){});
-      }
-      videoWrap.style.display="block";
-    }else{
-      videoWrap.style.display="none";
-    }
-    // テロップ
-    idx=0; runTelop();
+    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false})
+    .then(function(s){ stream=s; video.srcObject=s; video.setAttribute("playsinline",""); return video.play(); })
+    .then(function(){ running=true; scanTop.textContent="メッセージQRにカメラを向けてください"; requestAnimationFrame(loop); })
+    .catch(function(err){ scanTop.textContent="カメラを起動できませんでした："+(err&&err.name?err.name:"エラー"); $("#startOverlay").style.display="flex"; });
   }
 
-  function runTelop(){
-    if(timer){ clearTimeout(timer); timer=null; }
-    telop.innerHTML="";
-    if(!cfg.m.length) return;
-    var step=Math.max(1600, cfg.dur*1000*0.72); // 重なりながら次へ
+  function toScreen(px,py){
+    var vW=video.videoWidth,vH=video.videoHeight,sW=window.innerWidth,sH=window.innerHeight;
+    var vx=px*vW/canvas.width, vy=py*vH/canvas.height, vAsp=vW/vH, sAsp=sW/sH, scale,offX=0,offY=0;
+    if(vAsp>sAsp){ scale=sH/vH; offX=(sW-vW*scale)/2; } else { scale=sW/vW; offY=(sH-vH*scale)/2; }
+    return {x:vx*scale+offX, y:vy*scale+offY};
+  }
+  function adj(m){return [m[4]*m[8]-m[5]*m[7],m[2]*m[7]-m[1]*m[8],m[1]*m[5]-m[2]*m[4],
+    m[5]*m[6]-m[3]*m[8],m[0]*m[8]-m[2]*m[6],m[2]*m[3]-m[0]*m[5],
+    m[3]*m[7]-m[4]*m[6],m[1]*m[6]-m[0]*m[7],m[0]*m[4]-m[1]*m[3]];}
+  function mm(a,b){var r=[];for(var i=0;i<3;i++)for(var j=0;j<3;j++){var s=0;for(var k=0;k<3;k++)s+=a[3*i+k]*b[3*k+j];r[3*i+j]=s;}return r;}
+  function mv(m,v){return [m[0]*v[0]+m[1]*v[1]+m[2]*v[2],m[3]*v[0]+m[4]*v[1]+m[5]*v[2],m[6]*v[0]+m[7]*v[1]+m[8]*v[2]];}
+  function basis(x1,y1,x2,y2,x3,y3,x4,y4){var m=[x1,x2,x3,y1,y2,y3,1,1,1];var v=mv(adj(m),[x4,y4,1]);return mm(m,[v[0],0,0,0,v[1],0,0,0,v[2]]);}
+  function applyPanel(tl,tr,bl,br){
+    var s=basis(0,0,W,0,0,H,W,H), d=basis(tl.x,tl.y,tr.x,tr.y,bl.x,bl.y,br.x,br.y), t=mm(d,adj(s));
+    for(var i=0;i<9;i++) t[i]=t[i]/t[8];
+    for(var j=0;j<9;j++){ if(!isFinite(t[j])) return; }
+    var css="matrix3d("+[t[0],t[3],0,t[6],t[1],t[4],0,t[7],0,0,1,0,t[2],t[5],0,t[8]].join(",")+")";
+    ytPanel.style.transform=css; reticle.style.transform=css;
+  }
+  function expand(c,p,f){return {x:c.x+(p.x-c.x)*f,y:c.y+(p.y-c.y)*f};}
+  function lerpPt(a,b,t){return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};}
+
+  /* テロップ */
+  function startTelop(){
+    if(telopTimer || !msgs.length) return;
+    var step=Math.max(1500,dur*1000*0.7);
     function next(){
-      if(idx>=cfg.m.length){
-        if(cfg.loop){ idx=0; } else { return; }
-      }
-      var el=document.createElement("div");
-      el.className="msg";
-      el.style.setProperty("--dur", cfg.dur+"s");
-      el.textContent=cfg.m[idx];
-      telop.appendChild(el);
-      // reflow→アニメ開始
-      void el.offsetWidth;
-      el.classList.add("run");
-      setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, cfg.dur*1000+200);
-      idx++;
-      timer=setTimeout(next, step);
+      if(!visible){ telopTimer=null; return; }
+      if(telopIdx>=msgs.length) telopIdx=0;
+      var el=document.createElement("div"); el.className="msg";
+      el.style.setProperty("--dur",dur+"s"); el.textContent=msgs[telopIdx];
+      telop.appendChild(el); void el.offsetWidth; el.classList.add("run");
+      setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, dur*1000+200);
+      telopIdx++; telopTimer=setTimeout(next,step);
     }
     next();
   }
+  function stopTelop(){ if(telopTimer){ clearTimeout(telopTimer); telopTimer=null; } }
 
-  function stopExperience(){
-    if(timer){ clearTimeout(timer); timer=null; }
-    if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
-    videoWrap.innerHTML=""; videoWrap.style.display="none";
-    telop.innerHTML="";
-    scene.style.display="none";
-    if(location.hash.indexOf("#show")===0){ history.replaceState(null,"",baseUrl()); }
-    $("#home").style.display="block";
+  function onFound(cfg){
+    if(cfg.y) ensurePlayer(cfg.y);
+    if(JSON.stringify(cfg.m)!==JSON.stringify(msgs)){ msgs=cfg.m; telopIdx=0; }
+    dur=cfg.dur||4.2;
+    if(!visible){
+      visible=true;
+      ytPanel.style.display = cfg.y ? "block":"none";
+      reticle.style.display="block";
+      finder.style.display="none";
+      scanTop.textContent="表示中（QRを外すと一時停止）";
+      if(cfg.y) ytPlay();
+      startTelop();
+    }
+  }
+  function onLost(){
+    if(visible){
+      visible=false;
+      ytPause(); ytPanel.style.display="none"; reticle.style.display="none";
+      stopTelop(); telop.innerHTML="";
+      finder.style.display="block";
+      scanTop.textContent="メッセージQRにカメラを向けてください";
+    }
+    smooth=null;
   }
 
-  /* ---------- 起動時：QRから来たら自動で体験へ ---------- */
-  var fromHash=parseHash();
-  if(fromHash && (fromHash.m.length || fromHash.v)){
-    startExperience({m:fromHash.m, v:fromHash.v, loop:fromHash.loop, dur:fromHash.dur});
+  function loop(){
+    if(!running) return;
+    if(video.readyState===video.HAVE_ENOUGH_DATA && video.videoWidth){
+      var vW=video.videoWidth,vH=video.videoHeight, cw=Math.min(520,vW), ch=Math.round(cw*vH/vW);
+      if(canvas.width!==cw){ canvas.width=cw; canvas.height=ch; }
+      ctx.drawImage(video,0,0,cw,ch);
+      var img=ctx.getImageData(0,0,cw,ch), code=null;
+      try{ code=jsQR(img.data,cw,ch,{inversionAttempts:"dontInvert"}); }catch(e){}
+      if(code && code.data){
+        var cfg=parseShareLink(code.data);
+        if(cfg && (cfg.m.length || cfg.y)){
+          var L=code.location;
+          var tl=toScreen(L.topLeftCorner.x,L.topLeftCorner.y);
+          var tr=toScreen(L.topRightCorner.x,L.topRightCorner.y);
+          var br=toScreen(L.bottomRightCorner.x,L.bottomRightCorner.y);
+          var bl=toScreen(L.bottomLeftCorner.x,L.bottomLeftCorner.y);
+          // 動画は16:9なので、QR(正方形)の上側に配置されるよう上方向へ展開
+          var c={x:(tl.x+tr.x+br.x+bl.x)/4,y:(tl.y+tr.y+br.y+bl.y)/4};
+          var q={tl:expand(c,tl,EXPAND),tr:expand(c,tr,EXPAND),br:expand(c,br,EXPAND),bl:expand(c,bl,EXPAND)};
+          if(!smooth) smooth=q;
+          else{ var a=0.45; smooth={tl:lerpPt(smooth.tl,q.tl,a),tr:lerpPt(smooth.tr,q.tr,a),br:lerpPt(smooth.br,q.br,a),bl:lerpPt(smooth.bl,q.bl,a)}; }
+          onFound(cfg);
+          applyPanel(smooth.tl,smooth.tr,smooth.bl,smooth.br);
+          miss=0;
+        }else{
+          scanTop.textContent="このQRはメッセージQRではありません";
+        }
+      }else{
+        miss++; if(miss>16) onLost();
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- file:// 警告 ---------- */
+  if(location.protocol==="file:"){ $("#fileWarn").classList.remove("hidden"); }
+
+  /* ---------- QR(共有リンク)から開いたら、ARカメラを自動起動 ---------- */
+  if(location.hash.indexOf("#show")===0){
+    document.querySelector('[data-tab="scan"]').click();
+    $("#home").style.display="none"; $("#scanView").style.display="block"; $("#startOverlay").style.display="flex";
   }
 })();
 </script>
